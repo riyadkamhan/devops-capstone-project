@@ -122,8 +122,14 @@ Please only use these commands for working stand-alone on your own computer with
 
 You can now perform Tekton development locally, just like in the Cloud IDE lab environment.
 
-## Author
 
+# DevOps Capstone Project
+
+![Build Status](https://github.com/<OWNER>/devops-capstone-project/actions/workflows/ci-build.yaml/badge.svg)
+
+This project demonstrates a CI/CD pipeline using GitHub Actions.
+It includes automated linting, unit testing, and integration with PostgreSQL.
+## Author
 [John Rofrano](https://www.coursera.org/instructor/johnrofrano), Senior Technical Staff Member, DevOps Champion, @ IBM Research, and Instructor @ Coursera
 
 ## License
