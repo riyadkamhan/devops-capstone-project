@@ -1,6 +1,5 @@
-name: CI Build
+name: CI/CD Build and Push
 
-# تشغيل الـ workflow عند كل push أو pull_request على الفرع main
 on:
   push:
     branches:
@@ -10,11 +9,10 @@ on:
       - main
 
 jobs:
-  build:
+  build-and-push:
     runs-on: ubuntu-latest
     container: python:3.9-slim
 
-    # تعريف الخدمات المطلوبة (PostgreSQL)
     services:
       postgres:
         image: postgres:alpine
@@ -29,26 +27,40 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
-    # خطوات تنفيذ الـ job
     steps:
-      # Step 1: Checkout code
+      # 1️⃣ Checkout code
       - name: Checkout
         uses: actions/checkout@v2
 
-      # Step 2: Install dependencies
+      # 2️⃣ Install dependencies
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip wheel
           pip install -r requirements.txt
 
-      # Step 3: Lint code with flake8
+      # 3️⃣ Lint code
       - name: Lint with flake8
         run: |
           flake8 service --count --select=E9,F63,F7,F82 --show-source --statistics
           flake8 service --count --max-complexity=10 --max-line-length=127 --statistics
 
-      # Step 4: Run unit tests with Nose
+      # 4️⃣ Run tests
       - name: Run unit tests with nose
         run: nosetests
         env:
           DATABASE_URI: "postgresql://postgres:pgs3cr3t@postgres:5432/testdb"
+
+      # 5️⃣ Login to IBM Cloud Container Registry
+      - name: IBM Cloud Login
+        uses: ibm-cloud/setup-ibmcloud@v1
+        with:
+          ibmcloud_api_key: ${{ secrets.ICR_API_KEY }}
+          region: us-south
+
+      - name: Set ICR Namespace
+        run: ibmcloud cr login
+
+      # 6️⃣ Build Docker Image
+      - name: Build Docker image
+        run: |
+          docker build -t us.icr.io/$
