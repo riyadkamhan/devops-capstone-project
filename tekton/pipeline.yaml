@@ -1,5 +1,6 @@
 #
-# This pipeline needs the following tasks from Tekton Hub
+# Pipeline: Continuous Delivery (CD)
+# Required tasks from Tekton Hub:
 #   - git-clone
 #   - flake8
 #
@@ -13,9 +14,12 @@ spec:
     - name: pipeline-workspace
   params:
     - name: repo-url
+      description: URL of the Git repository
     - name: branch
+      description: Branch to build
       default: main
   tasks:
+    # Task 1: Clean workspace
     - name: init
       workspaces:
         - name: source
@@ -23,6 +27,7 @@ spec:
       taskRef:
         name: cleanup
 
+    # Task 2: Clone repository
     - name: clone
       workspaces:
         - name: output
@@ -30,9 +35,60 @@ spec:
       taskRef:
         name: git-clone
       params:
-      - name: url
-        value: $(params.repo-url)
-      - name: revision
-        value: $(params.branch)
+        - name: url
+          value: $(params.repo-url)
+        - name: revision
+          value: $(params.branch)
       runAfter:
         - init
+
+    # Task 3: Lint code with flake8
+    - name: lint
+      workspaces:
+        - name: source
+          workspace: pipeline-workspace
+      taskRef:
+        name: flake8
+      params:
+        - name: image
+          value: "python:3.9-slim"
+        - name: args
+          value: ["--count","--max-complexity=10","--max-line-length=127","--statistics"]
+      runAfter:
+        - clone
+
+    # Task 4: Run unit tests with Nose
+    - name: test
+      workspaces:
+        - name: source
+          workspace: pipeline-workspace
+      taskRef:
+        name: nose
+      params:
+        - name: args
+          value: "-v --with-spec --spec-color"
+        - name: database_uri
+          value: "postgresql://postgres:pgs3cr3t@postgres:5432/testdb"
+      runAfter:
+        - clone  # يمكن تشغيل الاختبارات بالتوازي مع Lint
+
+    # Task 5: Build Docker image
+    - name: build
+      workspaces:
+        - name: source
+          workspace: pipeline-workspace
+      taskRef:
+        name: build-image   # استبدل باسم المهمة الخاصة بالبناء
+      runAfter:
+        - lint
+        - test
+
+    # Task 6: Deploy to OpenShift
+    - name: deploy
+      workspaces:
+        - name: source
+          workspace: pipeline-workspace
+      taskRef:
+        name: deploy      # استبدل باسم المهمة الخاصة بالنشر
+      runAfter:
+        - build
