@@ -1,8 +1,5 @@
 #
-# Pipeline: Continuous Delivery (CD)
-# Required tasks from Tekton Hub:
-#   - git-clone
-#   - flake8
+# Pipeline: Continuous Delivery (CD) with buildah
 #
 ---
 apiVersion: tekton.dev/v1beta1
@@ -18,6 +15,9 @@ spec:
     - name: branch
       description: Branch to build
       default: main
+    - name: build-image
+      description: Full image name to build and push
+
   tasks:
     # Task 1: Clean workspace
     - name: init
@@ -58,7 +58,7 @@ spec:
         - clone
 
     # Task 4: Run unit tests with Nose
-    - name: test
+    - name: tests
       workspaces:
         - name: source
           workspace: pipeline-workspace
@@ -70,18 +70,22 @@ spec:
         - name: database_uri
           value: "postgresql://postgres:pgs3cr3t@postgres:5432/testdb"
       runAfter:
-        - clone  # يمكن تشغيل الاختبارات بالتوازي مع Lint
+        - clone  # يمكن تشغيله بالتوازي مع lint
 
-    # Task 5: Build Docker image
+    # Task 5: Build Docker image with buildah ClusterTask
     - name: build
       workspaces:
         - name: source
           workspace: pipeline-workspace
       taskRef:
-        name: build-image   # استبدل باسم المهمة الخاصة بالبناء
+        name: buildah
+        kind: ClusterTask
+      params:
+        - name: IMAGE
+          value: "$(params.build-image)"
       runAfter:
         - lint
-        - test
+        - tests
 
     # Task 6: Deploy to OpenShift
     - name: deploy
